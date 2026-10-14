@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stenograf</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23E9EFE4'/%3E%3Cpath d='M12 22h40M12 32h40M12 42h40' stroke='%239DB4CC' stroke-width='2'/%3E%3Cpath d='M32 10v44' stroke='%23D9434F' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=PT+Mono&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <aside class="archive" id="archive" aria-label="Arkiv">
+    <div class="archive-head">
+      <a class="mark" href="#/" aria-label="Stenograf, ny transkription">
+        <span class="mark-ru">Стенограф</span>
+        <span class="mark-sv">Stenograf</span>
+      </a>
+    </div>
+    <a class="new-btn" href="#/">+ Ny transkription</a>
+    <h2 class="eyebrow">Arkiv</h2>
+    <ul class="job-list" id="jobList"></ul>
+    <p class="archive-empty" id="archiveEmpty" hidden>Dina transkriptioner hamnar här och sparas på den här datorn.</p>
+    <footer class="archive-foot" id="deviceInfo"></footer>
+  </aside>
+
+  <main class="main" id="main">
+    <button class="archive-toggle" id="archiveToggle" aria-controls="archive" aria-expanded="false">Arkiv</button>
+
+    <!-- Ny transkription -->
+    <section class="compose" id="compose" hidden>
+      <h1 class="compose-title">Klistra in en länk.<br><span>Få varje ryskt ord på papper.</span></h1>
+      <form class="link-form" id="linkForm" autocomplete="off">
+        <label class="sr-only" for="urlInput">Videolänk</label>
+        <input class="link-input" id="urlInput" type="url" inputmode="url" required
+               placeholder="https://www.youtube.com/watch?v=…" spellcheck="false">
+        <button class="btn btn-ink" id="goBtn" type="submit">Transkribera</button>
+      </form>
+      <div class="form-row">
+        <fieldset class="seg" id="modeSeg">
+          <legend class="sr-only">Språk i videon</legend>
+          <label><input type="radio" name="mode" value="ru" checked><span>Ryska <em>GigaAM-v3</em></span></label>
+          <label><input type="radio" name="mode" value="auto"><span>Annat språk <em>Whisper</em></span></label>
+        </fieldset>
+        <label class="speakers-pick">
+          <span>Talare</span>
+          <select id="speakersSel" aria-label="Antal talare">
+            <option value="auto" selected>Räkna ut själv</option>
+            <option value="1">1 (ingen uppdelning)</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </label>
+        <label class="file-pick">
+          <input type="file" id="fileInput" accept="audio/*,video/*,.mkv,.webm,.m4a,.opus,.ogg,.flac">
+          <span>eller välj en fil</span>
+        </label>
+      </div>
+      <p class="form-error" id="formError" role="alert" hidden></p>
+      <dl class="sources">
+        <dt>Fungerar med</dt>
+        <dd>YouTube · VK Video · RuTube · Одноклассники · Дзен · Telegram · Vimeo · tusentals andra sajter · egna ljud- och videofiler</dd>
+        <dt>Integritet</dt>
+        <dd>Allt körs på din Mac. Ljud och text lämnar aldrig datorn.</dd>
+      </dl>
+    </section>
+
+    <!-- Jobb -->
+    <section class="job" id="job" hidden>
+      <header class="job-head">
+        <div class="job-media" id="jobMedia" hidden>
+          <div class="job-thumb" id="jobThumb"></div>
+          <div class="media-frame" id="mediaFrame"></div>
+        </div>
+        <div class="job-titles">
+          <p class="eyebrow" id="jobSource"></p>
+          <h1 class="job-title" id="jobTitle"></h1>
+          <p class="job-meta" id="jobMeta"></p>
+        </div>
+      </header>
+
+      <div class="progress" id="progress" hidden>
+        <ol class="stages" id="stages">
+          <li data-s="downloading">Hämtar ljud</li>
+          <li data-s="vad">Hittar tal</li>
+          <li data-s="transcribing">Transkriberar</li>
+          <li data-s="done">Klart</li>
+        </ol>
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="barFill"></i></div>
+        <p class="progress-detail"><span id="progressLabel"></span> <span id="progressDetail" class="mono"></span></p>
+        <button class="btn btn-ghost" id="cancelBtn" type="button">Avbryt</button>
+      </div>
+
+      <div class="job-error" id="jobError" hidden>
+        <p id="jobErrorText"></p>
+        <div class="auth-fix" id="authFix" hidden>
+          <label for="browserSel">Låna inloggningen från</label>
+          <select id="browserSel"></select>
+          <button class="btn btn-ink" id="authRetryBtn" type="button">Försök igen inloggad</button>
+          <p class="auth-note">Stenograf läser bara cookies för just den här hämtningen. macOS kan fråga om lov.</p>
+        </div>
+        <button class="btn btn-ink" id="retryBtn" type="button">Försök igen</button>
+      </div>
+
+      <div class="toolbar" id="toolbar" hidden>
+        <div class="search">
+          <label class="sr-only" for="searchInput">Sök i texten</label>
+          <input id="searchInput" type="search" placeholder="Sök i texten  ⌘F" spellcheck="false">
+          <span class="search-count mono" id="searchCount"></span>
+          <button class="icon-btn" id="searchPrev" type="button" aria-label="Föregående träff">↑</button>
+          <button class="icon-btn" id="searchNext" type="button" aria-label="Nästa träff">↓</button>
+        </div>
+        <div class="tools">
+          <label class="toggle"><input type="checkbox" id="followToggle" checked><span>Följ videon</span></label>
+          <button class="btn btn-ghost" id="unsureBtn" type="button" aria-pressed="false" title="Ord modellen var osäker på. Klicka igen för nästa.">Osäkra ord</button>
+          <button class="btn btn-ghost" id="editBtn" type="button">Redigera</button>
+          <button class="btn btn-ghost" id="copyBtn" type="button">Kopiera text</button>
+          <div class="export">
+            <button class="btn btn-ink" id="exportBtn" type="button" aria-haspopup="menu" aria-expanded="false">Exportera</button>
+            <div class="export-menu" id="exportMenu" role="menu" hidden>
+              <a role="menuitem" data-fmt="txt">Text <span>.txt</span></a>
+              <a role="menuitem" data-fmt="timed.txt">Text med tider <span>.txt</span></a>
+              <a role="menuitem" data-fmt="docx">Word <span>.docx</span></a>
+              <a role="menuitem" data-fmt="srt">Undertexter <span>.srt</span></a>
+              <a role="menuitem" data-fmt="vtt">Undertexter för webben <span>.vtt</span></a>
+              <a role="menuitem" data-fmt="md">Markdown <span>.md</span></a>
+              <a role="menuitem" data-fmt="json">Ord med tider <span>.json</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-bar" id="editBar" hidden>
+        <p>Klicka i texten och skriv. Tiderna för ändrade meningar räknas om automatiskt.</p>
+        <span class="mono" id="editCount"></span>
+        <button class="btn btn-ghost" id="editCancel" type="button">Ångra ändringar</button>
+        <button class="btn btn-ink" id="editSave" type="button">Spara ändringar</button>
+      </div>
+
+      <article class="pad" id="pad" lang="ru" aria-live="off"></article>
+    </section>
+  </main>
+
+  <!-- Spelare -->
+  <div class="player" id="player" hidden>
+    <button class="icon-btn" id="back5" type="button" aria-label="Bakåt 5 sekunder">−5</button>
+    <button class="play" id="playBtn" type="button" aria-label="Spela">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path id="playIcon" d="M7 4.5v15l12-7.5z"/></svg>
+    </button>
+    <button class="icon-btn" id="fwd5" type="button" aria-label="Framåt 5 sekunder">+5</button>
+    <span class="time mono" id="timeNow">0:00</span>
+    <div class="scrub" id="scrub" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0">
+      <i class="scrub-track"><i class="scrub-fill" id="scrubFill"></i></i>
+      <i class="scrub-head" id="scrubHead"></i>
+    </div>
+    <span class="time mono" id="timeTotal">0:00</span>
+    <button class="speed mono" id="speedBtn" type="button" aria-label="Uppspelningshastighet">1×</button>
+  </div>
+
+  <div class="drop" id="drop" hidden><p>Släpp filen för att transkribera den</p></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<dialog class="confirm" id="confirmDlg">
+  <form method="dialog">
+    <p id="confirmText"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" value="no">Behåll</button>
+      <button class="btn btn-danger" value="yes">Radera</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/static/player.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

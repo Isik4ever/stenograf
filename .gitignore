@@ -1,0 +1,8 @@
+.venv/
+data/
+__pycache__/
+.pytest_cache/
+.DS_Store
+.claude/
+.impeccable/
+.ruff_cache/
